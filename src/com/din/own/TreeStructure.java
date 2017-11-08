@@ -23,7 +23,11 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Multiset;
+import com.google.common.collect.Ordering;
+import com.google.common.primitives.Ints;
 public class TreeStructure {
 
 	/**
@@ -47,7 +51,7 @@ public class TreeStructure {
 	static String tempExtension = null;
 	static int tempExtensionPositioninArray = 0;
 	static String currentFilePath = null;
-	static Multimap<String, String> maps = null; 
+	static Multimap<String, String> maps = null,sortedmaps=null; 
 	static String outputPath = null;
 	static HashSet<String> extensions = new HashSet<String>();
 
@@ -65,11 +69,41 @@ public class TreeStructure {
 		System.out.println("Total Sheet should be:"+allExtensionsArray.length);
 		System.out.println(Arrays.asList(allExtensionsArray));
 		pushDirectorysecondtime(root);
-		printInExcel(maps);
+		//sorting
+		sortedmaps=sortedByDescendingFrequency(maps);
+		//sorting
+		printInExcel(sortedmaps);
 		JOptionPane.showMessageDialog (null, "Check output in "+ directory, "Info", JOptionPane.INFORMATION_MESSAGE);
 		Desktop.getDesktop().open(new File(outputPath));
 	}
+	//Sorting Desc order
+	/**
+	 * @return a {@link Multimap} whose entries are sorted by descending frequency
+	 */
+	public static Multimap<String, String> sortedByDescendingFrequency(Multimap<String, String> multimap) {
+	    // ImmutableMultimap.Builder preserves key/value order
+	    ImmutableMultimap.Builder<String, String> result = ImmutableMultimap.builder();
+	    for (Multiset.Entry<String> entry : DESCENDING_COUNT_ORDERING.sortedCopy(multimap.keys().entrySet())) {
+	        result.putAll(entry.getElement(), multimap.get(entry.getElement()));
+	    }
+	    return result.build();
+	}
 
+	/**
+	 * An {@link Ordering} that orders {@link Multiset.Entry Multiset entries} by ascending count.
+	 */
+	private static final Ordering<Multiset.Entry<?>> ASCENDING_COUNT_ORDERING = new Ordering<Multiset.Entry<?>>() {
+	    @Override
+	    public int compare(Multiset.Entry<?> left, Multiset.Entry<?> right) {
+	        return Ints.compare(left.getCount(), right.getCount());
+	    }
+	};
+
+	/**
+	 * An {@link Ordering} that orders {@link Multiset.Entry Multiset entries} by descending count.
+	 */
+	private static final Ordering<Multiset.Entry<?>> DESCENDING_COUNT_ORDERING = ASCENDING_COUNT_ORDERING.reverse();
+	//sorting Desc
 
 	private static void pushDirectory(String directory) {
 		if (!new File(directory).isDirectory()) {
@@ -104,15 +138,15 @@ public class TreeStructure {
 	static 	XSSFWorkbook workbook = null;
 	static CellStyle stylebold = null,stylecolor=null,stylewrap=null,styleCommon=null;
 	static XSSFFont font = null;
-	private static void printInExcel(Multimap map2) throws IOException {
+	private static void printInExcel(Multimap maps) throws IOException {
 		workbook = new XSSFWorkbook();
 		FileOutputStream outputStream = new FileOutputStream(outputPath);
 
 
-		for(String Extkey : maps.keySet()){ //Iterate over extension keys
+		for(Object Extkey : maps.keySet()){ //Iterate over extension keys
 			System.out.println("Extkey is:"+Extkey);
 			//String currentfileextkey = (String)Extkey;
-			sheet = workbook.createSheet((String)Extkey);//new sheet
+			sheet = workbook.createSheet((String)Extkey+" ("+maps.get(Extkey).size()+")");//new sheet
 
 			//commonstyling
 			font = workbook.createFont();
